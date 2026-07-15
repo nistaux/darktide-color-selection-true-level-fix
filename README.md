@@ -4,7 +4,9 @@
 
 Design and build **Color Selection – True Level Compatibility Fix**, an independently maintained Darktide mod intended to preserve True Level's character-level and Havoc-rank colors when **Color Selection (AKA Player Slot Color Picker)** is also active. It must integrate without replacing the distributed files of either dependency mod.
 
-The project is currently in design and compatibility research. No implementation has been scaffolded yet.
+The version-one design contract is settled in `color_selection_true_level_fix/README.md`. No implementation has been scaffolded yet, and implementation, LuaJIT provisioning, and in-game changes require a separate explicit request.
+
+The initial Supported Surface is player world nameplates in missions and the Mourningstar. Team HUD panels and other views are outside version-one scope until separately researched and validated; this boundary does not claim that those views are either broken or compatible.
 
 ## Repository layout
 
