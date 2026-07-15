@@ -1,6 +1,6 @@
 # Documentation
 
-Repository documentation is organized by purpose so historical evidence does not become current guidance accidentally.
+Documentation for **Color Selection – True Level Compatibility Fix** is organized by purpose so historical evidence does not become current guidance accidentally.
 
 ## Decisions
 

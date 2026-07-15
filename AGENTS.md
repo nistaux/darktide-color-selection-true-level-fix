@@ -2,7 +2,7 @@
 
 ## Project Purpose
 
-Design, build, and maintain Austin's independent Darktide companion mod for **Color Selection (AKA Player Slot Color Picker)**. The companion should layer selected behavior onto the creator-maintained upstream mod without replacing or redistributing its files.
+Design, build, and maintain **Color Selection – True Level Compatibility Fix**, Austin's independent Darktide compatibility mod for **Color Selection (AKA Player Slot Color Picker)** and **True Level**. It should preserve True Level's character-level and Havoc-rank colors when Color Selection is active, without replacing or redistributing either dependency mod's files.
 
 ## Technical Source of Truth
 
@@ -12,7 +12,7 @@ The coding project is the technical source of truth. Keep canonical behavior, se
 
 - Language: Lua
 - Framework: Darktide Mod Loader (DML) and Darktide Mod Framework (DMF)
-- `companion-mod/`: reserved for the new mod; do not invent its mod ID or scaffold until the design session settles them
+- `color_selection_true_level_fix/`: reserved implementation directory and intended DMF mod identifier; do not scaffold behavior until the design session settles the integration boundary
 - `reference/legacy-customized-2.6/`: preserved customized Color Selection 2.6 snapshot
 - `reference/newer-2.14-with-nameplate-fixes/`: preserved Color Selection 2.14 snapshot with Austin's tested nameplate fixes
 - `docs/research/`: project-specific comparison and compatibility research
@@ -34,7 +34,7 @@ Do not invent commands or claim runtime validation from static inspection.
 ## Constraints
 
 - Preserve both historical source snapshots unless Austin explicitly authorizes replacing or removing one.
-- Treat everything under `reference/` as read-only evidence. New implementation belongs under `companion-mod/`.
+- Treat everything under `reference/` as read-only evidence. New implementation belongs under `color_selection_true_level_fix/`.
 - Do not copy or redistribute upstream implementation or assets into the Companion Mod without explicit permission and a documented license basis.
 - Prefer stable DMF hooks, explicit cross-mod APIs, and narrow compatibility seams. Treat game internals and private upstream/DMF APIs as patch-sensitive.
 - Do not assume the Companion Mod will survive every upstream release. Detect incompatible upstream changes where feasible and document the validation required after updates.
@@ -43,7 +43,7 @@ Do not invent commands or claim runtime validation from static inspection.
 
 ## Definition of Done
 
-- The requested behavior or analysis is complete in the intended companion-mod or documentation location.
+- The requested behavior or analysis is complete in the intended compatibility-mod or documentation location.
 - Relevant static checks are performed and real results are reported.
 - Compatibility assumptions and supported upstream behavior are explicit.
 - Any required in-game validation is clearly identified and not represented as complete unless actually exercised.
