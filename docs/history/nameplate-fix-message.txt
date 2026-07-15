@@ -1,0 +1,68 @@
+Hey again! I think I found the fix for the levels on nameplates losing their colors in the hub as well that I talked about in the modding discord.
+
+I'm not exactly finished as I think part might still be broken.
+
+So on line 870 (I believe, might've added a comment somewhere when I was testing stuff that moved this line around) in ColorSelection.lua it reads:
+local clean_name_part = name_part:gsub("{#color%([^%)]*%)}", ""):gsub("{#reset%(%)}", "")
+
+
+Because of no carrot at the beginning of {#color%([^%)]*%)} this removes all color tags on the nameplate rather than just one that might be recoloring the name or class icon, causing True Level to lose its colors. The fix is just adding that carrot:
+local clean_name_part = name_part:gsub("^{#color%([^%)]*%)}", ""):gsub("{#reset%(%)}", "")
+
+
+Now the part that I believe is technically still broken. Line 860 (again might be off a little on the line number here) reads:
+local escaped_name = player_name:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")
+
+
+This causes a hyphenated name like Haken-Veil to become Haken%-Veil, which I believe in theory, would cause issues later in the code. 
+I'll try to explain in comments (starts at EDIT:) why I think this might be an issue below:
+-- Escape magic chars for gsub
+local escaped_name = player_name:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")
+
+-- Split header by newline to preserve title colors
+local name_part, title_part = header:match("^([^\n]*)\n?(.*)$")
+if not name_part then
+    name_part = header
+    title_part = ""
+end
+
+-- Strip color tags only from the name part (before newline)
+local clean_name_part = name_part:gsub("^{#color%([^%)]*%)}", ""):gsub("{#reset%(%)}", "")
+
+-- EDIT: 'clean_name_part' would be "Haken-Veil" for the example I used above
+-- but the 'escaped_name' it (the clean_name_part:find() below) is finding would be trying to find "Haken%-Veil".
+-- Because the last parameter of the find function is saying this is a plain string
+-- name_start and name_end variables, I believe, should now become nil or null or whatever lua uses, they become falsy. --
+local name_start, name_end = clean_name_part:find(escaped_name, 1, true)                                                --
+-- then causing this name_start if statement to just skip  < -------------------------------------------------------------
+if name_start then
+    -- Color everything from the start (icon) through the player name
+    local before_name = clean_name_part:sub(1, name_start - 1)
+    local after_name = clean_name_part:sub(name_end + 1)
+    local new_name_part = color_tag .. before_name .. player_name .. "{#reset()}" .. after_name
+    
+    -- Recombine: colored icon+name+rest + preserved title (with its colors intact)
+    local new_header = new_name_part
+    if title_part and title_part ~= "" then
+        new_header = new_header .. "\n" .. title_part
+    end
+    
+    content.header_text = new_header
+    marker._cs_last_header = nil  -- Clear cache to force update
+    -- Mark widget as dirty to force immediate redraw
+    if widget then
+        widget.dirty = true
+        if widget.content then
+            widget.content.dirty = true
+        end
+    end
+end
+
+
+I'm not exactly sure what the fix for this part "should" be. This problem only effects names that are hyphenated. 
+The escaped_name variable itself, I believe in my little bits of knowledge picked up so far, could be scrapped for just using player_name. I'm not sure if player_name needs to be escaped, but I could definitely be wrong. 
+I believe it would also be fixed by removing the escaping of hyphens from the gsub call that is escaping them, that way leaving escaping for the other special characters if that is needed.
+
+Hopefully I explained everything well and grammatically wasn't confusing. Also, I hope that I don't come off mean or anything like that either, just trying to help! 
+
+Let me know what ya think!
