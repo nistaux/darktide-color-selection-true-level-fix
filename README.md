@@ -27,6 +27,6 @@ See [`docs/README.md`](docs/README.md) for the documentation map and [`docs/adr/
 - Runtime: Darktide Mod Loader (DML) and Darktide Mod Framework (DMF)
 - Offline test: `luajit color_selection_true_level_fix/tests/run.lua`
 - Build, lint, and format commands: not established
-- Runtime validation: requires Austin's Windows Darktide/DMF environment
+- Runtime validation: see the first exact [Validated Version Combination](color_selection_true_level_fix/VALIDATION.md)
 
-The reference snapshots are unchanged evidence, not working copies. The implementation has static and offline confidence only until the separate in-game validation issue records the first exact Validated Version Combination.
+The reference snapshots are unchanged evidence, not working copies. The first exact environment-scoped Validated Version Combination is recorded in [`color_selection_true_level_fix/VALIDATION.md`](color_selection_true_level_fix/VALIDATION.md); other combinations remain unvalidated until separately recorded.
