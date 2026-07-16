@@ -44,6 +44,14 @@ _Avoid_: Header text, raw player name
 The narrow post-processing operation that reuses Color Selection's already-applied leading color, ends that color immediately after the exact player-name segment, and preserves the later True Level-owned suffix unchanged. It does not select a color or recreate either Dependency Mod's formatting behavior.
 _Avoid_: Recoloring, color selection, suffix rebuilding
 
+**Rich Suffix Snapshot**:
+A marker-scoped, weak-keyed cache entry containing the exact True Level-owned suffix most recently observed with an exact RGB color tag on its first line, together with the exact profile name and current player-record identity that produced it. It exists only to restore formatting that Color Selection removes on a later frame; it is cleared when either identity guard changes, visible suffix content changes, the Activation Condition is not true, or a new World Visit begins.
+_Avoid_: Rebuilt suffix, level cache, player identity
+
+**Visible Suffix Match**:
+The safety condition for restoring a Rich Suffix Snapshot. The cached and current suffixes must become byte-identical after exact RGB color and reset tags are removed from their first lines; the newline and all later lines must already match exactly. This comparison ignores formatting only and never authorizes restoring changed visible text.
+_Avoid_: Approximate match, normalized suffix, title match
+
 **Activation Condition**:
 The state in which both Dependency Mods are enabled and True Level's nameplate feature is enabled. A clearly false condition produces silent expected inactivity. An unexpectedly unreadable condition causes Safe No-Change. Outside the condition, the compatibility fix is inert.
 _Avoid_: Mod installed, dependencies present

@@ -47,6 +47,12 @@ local services = {
     hook_safe = function(class, method_name, callback)
         mod:hook_safe(class, method_name, callback)
     end,
+    hook = function(class, method_name, callback)
+        mod:hook(class, method_name, callback)
+    end,
+    hook_require = function(path, callback)
+        mod:hook_require(path, callback)
+    end,
     get_world_marker_map = get_world_marker_map,
     log_diagnostic = log_diagnostic,
 }

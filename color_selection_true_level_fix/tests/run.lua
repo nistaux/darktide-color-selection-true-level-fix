@@ -279,6 +279,177 @@ test("registers once and corrects a supported current nameplate while active", f
     assert_equal(marker.widget.content.header_text, "{#color(12,34,56)}Mara{#reset()} - Level 42")
 end)
 
+test("preserves the True Level suffix across Color Selection 2.15 rewrites", function()
+    local class = { update = function() end }
+    local safe_update
+    local marker = {
+        type = "nameplate",
+        data = {
+            profile = function()
+                return { name = "Mara" }
+            end,
+        },
+        widget = {
+            content = {
+                header_text = "{#color(12,34,56)}[I] Mara{#reset()} - 30",
+            },
+        },
+    }
+    local enabled_mod = {
+        is_enabled = function()
+            return true
+        end,
+    }
+    local true_level = {
+        is_enabled = function()
+            return true
+        end,
+        get = function(_, setting_id)
+            assert_equal(setting_id, "enable_nameplate")
+            return true
+        end,
+    }
+    local services = {
+        get_mod = function(mod_id)
+            return mod_id == "ColorSelection" and enabled_mod or true_level
+        end,
+        get_nameplate_class = function()
+            return class
+        end,
+        hook = function()
+            error("the adapter must not consume its one DMF update-hook slot before the late safe hook")
+        end,
+        hook_safe = function(target, method_name, callback)
+            assert_equal(target, class)
+            assert_equal(method_name, "update")
+            safe_update = callback
+        end,
+        get_world_marker_map = function()
+            return { [17] = marker }
+        end,
+        log_diagnostic = function()
+        end,
+    }
+    local callbacks = adapter.new(services, splice)
+    local nameplates = { _nameplate_units = { { marker_id = 17 } } }
+    local rich_suffix = "{#reset()} - {#color(7,8,9)}42{#reset()} {#color(9,8,7)}30{#reset()}\n{#color(4,5,6)}The Title{#reset()}"
+    local rich = "{#color(12,34,56)}[I] Mara" .. rich_suffix
+
+    callbacks.on_all_mods_loaded()
+    assert_equal(type(safe_update), "function")
+
+    marker.widget.content.header_text = rich
+    safe_update(nameplates, 0, 0)
+    assert_equal(marker.widget.content.header_text, rich)
+
+    marker.widget.content.header_text = "{#color(99,88,77)}[I] Mara{#reset()} - 42 30\n{#color(4,5,6)}The Title{#reset()}"
+    safe_update(nameplates, 0, 0)
+    assert_equal(marker.widget.content.header_text, "{#color(99,88,77)}[I] Mara" .. rich_suffix)
+
+    marker.widget.content.header_text = "{#color(99,88,77)}[I] Mara{#reset()} - 43 30\n{#color(4,5,6)}The Title{#reset()}"
+    safe_update(nameplates, 0, 0)
+    assert_equal(marker.widget.content.header_text, "{#color(99,88,77)}[I] Mara{#reset()} - 43 30\n{#color(4,5,6)}The Title{#reset()}")
+
+    marker.widget.content.header_text = "{#color(99,88,77)}[I] Mara{#reset()} - 42 30\n{#color(4,5,6)}The Title{#reset()}"
+    safe_update(nameplates, 0, 0)
+    assert_equal(marker.widget.content.header_text, "{#color(99,88,77)}[I] Mara{#reset()} - 42 30\n{#color(4,5,6)}The Title{#reset()}")
+end)
+
+test("does not reuse a cached rich suffix after a marker changes profile", function()
+    local class = { update = function() end }
+    local safe_update
+    local profile_name = "Mara"
+    local marker = {
+        type = "nameplate",
+        data = {
+            profile = function()
+                return { name = profile_name }
+            end,
+        },
+        widget = { content = {} },
+    }
+    local enabled_mod = { is_enabled = function() return true end }
+    local callbacks = adapter.new({
+        get_mod = function(mod_id)
+            if mod_id == "ColorSelection" then
+                return enabled_mod
+            end
+
+            return { is_enabled = function() return true end, get = function() return true end }
+        end,
+        get_nameplate_class = function()
+            return class
+        end,
+        hook_safe = function(_, _, callback)
+            safe_update = callback
+        end,
+        get_world_marker_map = function()
+            return { [17] = marker }
+        end,
+        log_diagnostic = function()
+        end,
+    }, splice)
+    local nameplates = { _nameplate_units = { { marker_id = 17 } } }
+
+    callbacks.on_all_mods_loaded()
+    marker.widget.content.header_text = "{#color(1,2,3)}Mara{#reset()} - {#color(7,8,9)}42{#reset()}"
+    safe_update(nameplates)
+
+    marker.data = { profile = function() return { name = "Mara" } end }
+    marker.widget.content.header_text = "{#color(1,2,3)}Mara{#reset()} - 42"
+    safe_update(nameplates)
+    assert_equal(marker.widget.content.header_text, "{#color(1,2,3)}Mara{#reset()} - 42")
+
+    profile_name = "Sefoni"
+    marker.data = { profile = function() return { name = profile_name } end }
+    marker.widget.content.header_text = "{#color(1,2,3)}Sefoni{#reset()} - 42"
+    safe_update(nameplates)
+
+    profile_name = "Mara"
+    marker.widget.content.header_text = "{#color(1,2,3)}Mara{#reset()} - 42"
+    safe_update(nameplates)
+    assert_equal(marker.widget.content.header_text, "{#color(1,2,3)}Mara{#reset()} - 42")
+end)
+
+test("restores a numeric profile name without matching the leading color tag", function()
+    local safe_update
+    local marker = {
+        type = "nameplate",
+        data = { profile = function() return { name = "12" } end },
+        widget = { content = {} },
+    }
+    local enabled_mod = { is_enabled = function() return true end }
+    local callbacks = adapter.new({
+        get_mod = function(mod_id)
+            if mod_id == "ColorSelection" then
+                return enabled_mod
+            end
+
+            return { is_enabled = function() return true end, get = function() return true end }
+        end,
+        get_nameplate_class = function()
+            return { update = function() end }
+        end,
+        hook_safe = function(_, _, callback)
+            safe_update = callback
+        end,
+        get_world_marker_map = function()
+            return { [1] = marker }
+        end,
+        log_diagnostic = function()
+        end,
+    }, splice)
+    local nameplates = { _nameplate_units = { { marker_id = 1 } } }
+
+    callbacks.on_all_mods_loaded()
+    marker.widget.content.header_text = "{#color(12,34,56)}[I] 12{#reset()} - {#color(7,8,9)}42{#reset()}"
+    safe_update(nameplates)
+    marker.widget.content.header_text = "{#color(99,88,77)}[I] 12{#reset()} - 42"
+    safe_update(nameplates)
+
+    assert_equal(marker.widget.content.header_text, "{#color(99,88,77)}[I] 12{#reset()} - {#color(7,8,9)}42{#reset()}")
+end)
+
 test("isolates candidates and suppresses redacted diagnostics per World Visit", function()
     local class = { update = function() end }
     local hook_callback
@@ -430,6 +601,123 @@ test("retries direct hook registration at gameplay entry without stacking hooks"
     callbacks.on_game_state_changed("enter", "StateGameplay")
     assert_equal(hook_attempts, 2, "successful registration was attempted again")
     assert_equal(#diagnostics, 3)
+end)
+
+test("registers after the delayed nameplate class becomes ready", function()
+    local class = { new = function() end, update = function() end }
+    local require_callback
+    local new_callback
+    local safe_hook_calls = 0
+    local prior_new_called = false
+    local diagnostics = {}
+    local services = {
+        get_mod = function()
+        end,
+        get_nameplate_class = function()
+            return class
+        end,
+        hook_require = function(path, callback)
+            assert_equal(path, "scripts/ui/hud/elements/nameplates/hud_element_nameplates")
+            require_callback = callback
+        end,
+        hook = function(target, method_name, callback)
+            assert_equal(target, class)
+
+            if method_name == "new" then
+                new_callback = callback
+            else
+                error("unexpected hook method")
+            end
+        end,
+        hook_safe = function(target, method_name, _)
+            assert_equal(prior_new_called, true, "update hook registered before dependency hooks drained")
+            assert_equal(target, class)
+            assert_equal(method_name, "update")
+            safe_hook_calls = safe_hook_calls + 1
+        end,
+        get_world_marker_map = function()
+            return {}
+        end,
+        log_diagnostic = function(reason)
+            diagnostics[#diagnostics + 1] = reason
+        end,
+    }
+    local callbacks = adapter.new(services, splice)
+
+    callbacks.on_all_mods_loaded()
+    assert_equal(type(require_callback), "function")
+    assert_equal(safe_hook_calls, 0)
+
+    callbacks.on_game_state_changed("enter", "StateGameplay")
+    assert_equal(#diagnostics, 0, "expected class readiness delay emitted a diagnostic")
+
+    require_callback(class)
+    assert_equal(type(new_callback), "function")
+    assert_equal(safe_hook_calls, 0)
+
+    local instance = {}
+    local function pack(...)
+        return { n = select("#", ...), ... }
+    end
+    local returns = pack(new_callback(function()
+        prior_new_called = true
+        return instance, nil, "constructor sentinel"
+    end))
+    assert_equal(returns.n, 3)
+    assert_equal(returns[1], instance)
+    assert_equal(returns[2], nil)
+    assert_equal(returns[3], "constructor sentinel")
+    assert_equal(safe_hook_calls, 1)
+
+    new_callback(function()
+        return {}
+    end)
+    assert_equal(safe_hook_calls, 1, "class-ready registration stacked hooks")
+end)
+
+test("reports and retries a class-ready update-hook registration failure", function()
+    local class = { new = function() end, update = function() end }
+    local require_callback
+    local new_callback
+    local safe_hook_calls = 0
+    local diagnostics = {}
+    local services = {
+        get_mod = function()
+        end,
+        hook_require = function(_, callback)
+            require_callback = callback
+        end,
+        hook = function(_, method_name, callback)
+            assert_equal(method_name, "new")
+            new_callback = callback
+        end,
+        hook_safe = function()
+            safe_hook_calls = safe_hook_calls + 1
+
+            if safe_hook_calls == 1 then
+                error("PRIVATE_REGISTRATION_FAILURE")
+            end
+        end,
+        get_world_marker_map = function()
+            return {}
+        end,
+        log_diagnostic = function(reason)
+            diagnostics[#diagnostics + 1] = reason
+        end,
+    }
+    local callbacks = adapter.new(services, splice)
+
+    callbacks.on_all_mods_loaded()
+    require_callback(class)
+    new_callback(function() return {} end)
+    assert_equal(safe_hook_calls, 1)
+    assert_equal(diagnostics[1], "hook_registration_failed")
+
+    new_callback(function() return {} end)
+    assert_equal(safe_hook_calls, 2)
+
+    new_callback(function() return {} end)
+    assert_equal(safe_hook_calls, 2, "successful retry was attempted again")
 end)
 
 test("evaluates every Activation Condition input from current public mod state", function()
@@ -753,6 +1041,16 @@ test("assigns only Splice results and reuses current candidate state", function(
     header = "unrecognized"
     hook_callback(nameplates, 0, 0)
     assert_equal(assignments, 2, "Safe No-Change result assigned")
+
+    profile_name = "Mara"
+    header = "{#color(1,2,3)}Mara{#reset()} - {#color(7,8,9)}42{#reset()}"
+    hook_callback(nameplates, 0, 0)
+    local assignments_before_restore = assignments
+
+    header = "{#color(4,5,6)}Mara - 42"
+    hook_callback(nameplates, 0, 0)
+    assert_equal(assignments, assignments_before_restore + 1, "one restore frame assigned more than once")
+    assert_equal(header, "{#color(4,5,6)}Mara{#reset()} - {#color(7,8,9)}42{#reset()}")
 end)
 
 local passed = 0
