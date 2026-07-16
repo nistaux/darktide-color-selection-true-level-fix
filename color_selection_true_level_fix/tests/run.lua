@@ -346,6 +346,17 @@ test("preserves the True Level suffix across Color Selection 2.15 rewrites", fun
     safe_update(nameplates, 0, 0)
     assert_equal(marker.widget.content.header_text, "{#color(99,88,77)}[I] Mara" .. rich_suffix)
 
+    marker.widget.content.header_text = "{#color(99,88,77)}[I] Mara / changed"
+    safe_update(nameplates, 0, 0)
+    assert_equal(marker.widget.content.header_text, "{#color(99,88,77)}[I] Mara / changed")
+
+    marker.widget.content.header_text = "{#color(99,88,77)}[I] Mara{#reset()} - 42 30\n{#color(4,5,6)}The Title{#reset()}"
+    safe_update(nameplates, 0, 0)
+    assert_equal(marker.widget.content.header_text, "{#color(99,88,77)}[I] Mara{#reset()} - 42 30\n{#color(4,5,6)}The Title{#reset()}")
+
+    marker.widget.content.header_text = rich
+    safe_update(nameplates, 0, 0)
+
     marker.widget.content.header_text = "{#color(99,88,77)}[I] Mara{#reset()} - 43 30\n{#color(4,5,6)}The Title{#reset()}"
     safe_update(nameplates, 0, 0)
     assert_equal(marker.widget.content.header_text, "{#color(99,88,77)}[I] Mara{#reset()} - 43 30\n{#color(4,5,6)}The Title{#reset()}")
@@ -607,6 +618,7 @@ test("registers after the delayed nameplate class becomes ready", function()
     local class = { new = function() end, update = function() end }
     local require_callback
     local new_callback
+    local new_hook_calls = 0
     local safe_hook_calls = 0
     local prior_new_called = false
     local diagnostics = {}
@@ -624,6 +636,7 @@ test("registers after the delayed nameplate class becomes ready", function()
             assert_equal(target, class)
 
             if method_name == "new" then
+                new_hook_calls = new_hook_calls + 1
                 new_callback = callback
             else
                 error("unexpected hook method")
@@ -652,7 +665,9 @@ test("registers after the delayed nameplate class becomes ready", function()
     assert_equal(#diagnostics, 0, "expected class readiness delay emitted a diagnostic")
 
     require_callback(class)
+    require_callback(class)
     assert_equal(type(new_callback), "function")
+    assert_equal(new_hook_calls, 1, "same delivered class installed more than one constructor watcher")
     assert_equal(safe_hook_calls, 0)
 
     local instance = {}
@@ -673,6 +688,45 @@ test("registers after the delayed nameplate class becomes ready", function()
         return {}
     end)
     assert_equal(safe_hook_calls, 1, "class-ready registration stacked hooks")
+end)
+
+test("registers the late update hook for a replacement nameplate class", function()
+    local first_class = { new = function() end, update = function() end }
+    local second_class = { new = function() end, update = function() end }
+    local require_callback
+    local new_callbacks = {}
+    local safe_targets = {}
+    local callbacks = adapter.new({
+        get_mod = function()
+        end,
+        hook_require = function(_, callback)
+            require_callback = callback
+        end,
+        hook = function(target, method_name, callback)
+            assert_equal(method_name, "new")
+            new_callbacks[target] = callback
+        end,
+        hook_safe = function(target, method_name)
+            assert_equal(method_name, "update")
+            safe_targets[#safe_targets + 1] = target
+        end,
+        get_world_marker_map = function()
+            return {}
+        end,
+        log_diagnostic = function()
+        end,
+    }, splice)
+
+    callbacks.on_all_mods_loaded()
+    require_callback(first_class)
+    new_callbacks[first_class](function() return {} end)
+    require_callback(second_class)
+    assert_equal(type(new_callbacks[second_class]), "function")
+    new_callbacks[second_class](function() return {} end)
+
+    assert_equal(#safe_targets, 2)
+    assert_equal(safe_targets[1], first_class)
+    assert_equal(safe_targets[2], second_class)
 end)
 
 test("reports and retries a class-ready update-hook registration failure", function()

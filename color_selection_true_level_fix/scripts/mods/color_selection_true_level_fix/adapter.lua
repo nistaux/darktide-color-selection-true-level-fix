@@ -136,6 +136,7 @@ local function process_candidate(context, entry, markers)
 
         compatible_nameplate = result.replacement
     elseif result.outcome == "safe_no_change" then
+        context.rich_suffixes[marker] = nil
         context.emit(result.reason, result.metadata)
         return
     elseif result.outcome == "already_compatible" then
@@ -173,10 +174,11 @@ local function process_candidate(context, entry, markers)
 end
 
 function adapter.new(services, splice)
-    local registered = false
     local watching_for_class = false
     local emitted_reasons = {}
     local rich_suffixes = weak_key_table()
+    local registered_classes = weak_key_table()
+    local watched_classes = weak_key_table()
     local activation_was_true = false
 
     local function reset_caches()
@@ -299,11 +301,7 @@ function adapter.new(services, splice)
         end
     end
 
-    local function register(report_failure, known_class)
-        if registered then
-            return
-        end
-
+    local function register_update_hook(report_failure, known_class)
         local target_ok, class = true, known_class
 
         if class == nil then
@@ -315,6 +313,10 @@ function adapter.new(services, splice)
                 emit("hook_target_unavailable", { target_stage = "class_table" })
             end
 
+            return
+        end
+
+        if registered_classes[class] then
             return
         end
 
@@ -336,7 +338,7 @@ function adapter.new(services, splice)
             return
         end
 
-        registered = true
+        registered_classes[class] = true
     end
 
     local function watch_for_class()
@@ -351,10 +353,6 @@ function adapter.new(services, splice)
             services.hook_require,
             "scripts/ui/hud/elements/nameplates/hud_element_nameplates",
             function(class)
-                if registered then
-                    return
-                end
-
                 if type(class) ~= "table" then
                     emit("hook_target_unavailable", { target_stage = "class_table" })
                     return
@@ -365,15 +363,21 @@ function adapter.new(services, splice)
                     return
                 end
 
+                if watched_classes[class] then
+                    return
+                end
+
                 local hook_ok = pcall(services.hook, class, "new", function(func, ...)
                     local results = pack_values(func(...))
 
-                    register(true, class)
+                    register_update_hook(true, class)
 
                     return unpack_values(results, 1, results.n)
                 end)
 
-                if not hook_ok then
+                if hook_ok then
+                    watched_classes[class] = true
+                else
                     emit("hook_registration_failed")
                 end
             end
@@ -389,7 +393,7 @@ function adapter.new(services, splice)
             watch_for_class()
 
             if not watching_for_class then
-                register(false)
+                register_update_hook(false)
             end
         end,
         on_game_state_changed = function(status, state_name)
@@ -399,7 +403,7 @@ function adapter.new(services, splice)
                 candidate_context.rich_suffixes = rich_suffixes
                 activation_was_true = false
                 if not watching_for_class then
-                    register(true)
+                    register_update_hook(true)
                 end
             end
         end,
