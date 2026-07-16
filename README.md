@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Design and build **Color Selection – True Level Compatibility Fix**, an independently maintained Darktide mod intended to preserve True Level's character-level and Havoc-rank colors when **Color Selection (AKA Player Slot Color Picker)** is also active. It must integrate without replacing the distributed files of either dependency mod.
+**Color Selection – True Level Compatibility Fix** is an independently maintained Darktide mod that preserves True Level's character-level and Havoc-rank colors when **Color Selection (AKA Player Slot Color Picker)** is also active. It integrates without replacing the distributed files of either Dependency Mod.
 
-The version-one design contract is settled in `color_selection_true_level_fix/README.md`. No implementation has been scaffolded yet, and implementation, LuaJIT provisioning, and in-game changes require a separate explicit request.
+The version-one implementation and its full behavior contract live under `color_selection_true_level_fix/`. Offline checks exercise the shipped pure splice and game-facing adapter; they do not establish in-game compatibility.
 
 The initial Supported Surface is player world nameplates in missions and the Mourningstar. Team HUD panels and other views are outside version-one scope until separately researched and validated; this boundary does not claim that those views are either broken or compatible.
 
@@ -25,7 +25,8 @@ See [`docs/README.md`](docs/README.md) for the documentation map and [`docs/adr/
 
 - Language: Lua
 - Runtime: Darktide Mod Loader (DML) and Darktide Mod Framework (DMF)
-- Build, test, lint, format, and run commands: not established
+- Offline test: `luajit color_selection_true_level_fix/tests/run.lua`
+- Build, lint, and format commands: not established
 - Runtime validation: requires Austin's Windows Darktide/DMF environment
 
-The reference snapshots are evidence, not working copies. Companion behavior and compatibility assumptions must be documented and statically checked here, then validated in game where required.
+The reference snapshots are unchanged evidence, not working copies. The implementation has static and offline confidence only until the separate in-game validation issue records the first exact Validated Version Combination.

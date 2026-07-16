@@ -9,6 +9,7 @@ Documentation for **Color Selection – True Level Compatibility Fix** is organi
 ## Research
 
 - [`research/color-selection-2.6-custom-vs-2.14.md`](research/color-selection-2.6-custom-vs-2.14.md): detailed comparison of the two preserved snapshots and their merge/compatibility risks
+- [`research/v1-runtime-seam.md`](research/v1-runtime-seam.md): implementation-time static revalidation of the current game, DMF, Color Selection, and True Level seam
 
 Research records what was observed at a point in time. Revalidate patch-sensitive claims before using them as current design facts.
 

@@ -12,7 +12,7 @@ The coding project is the technical source of truth. Keep canonical behavior, se
 
 - Language: Lua
 - Framework: Darktide Mod Loader (DML) and Darktide Mod Framework (DMF)
-- `color_selection_true_level_fix/`: reserved implementation directory and intended DMF mod identifier; do not scaffold behavior until the design session settles the integration boundary
+- `color_selection_true_level_fix/`: version-one implementation, offline tests, package documentation, and stable DMF mod identifier
 - `reference/legacy-customized-2.6/`: preserved customized Color Selection 2.6 snapshot
 - `reference/newer-2.14-with-nameplate-fixes/`: preserved Color Selection 2.14 snapshot with Austin's tested nameplate fixes
 - `docs/research/`: project-specific comparison and compatibility research
@@ -24,10 +24,10 @@ The coding project is the technical source of truth. Keep canonical behavior, se
 ## Commands
 
 - Build: Not established
-- Test: Not established
+- Test: `luajit color_selection_true_level_fix/tests/run.lua`
 - Lint: Not established
 - Format: Not established
-- Run: Not established; in-game behavior requires validation in Austin's Windows Darktide/DMF environment
+- Run: Install through the normal DML/DMF workflow; in-game behavior requires validation in Austin's Windows Darktide/DMF environment
 
 Do not invent commands or claim runtime validation from static inspection.
 

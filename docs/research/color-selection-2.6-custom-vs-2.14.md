@@ -128,7 +128,7 @@ Instead of always replacing `UISettings.player_slot_colors` with a new table, 2.
 
 - Player colors are reapplied on player unit spawn/respawn through `GameModeManager.on_player_unit_spawn`: `ColorSelection.lua:1601-1608`.
 - Chat participant hook now returns safely when the original display name is nil: `ColorSelection.lua:867-872`.
-- Color tags are stripped from `player_name` before nameplate matching in case another hook returned formatted text: `ColorSelection.lua:698-699`. This is a 2.14 addition, but it does not compensate for the separate regressions in name-part cleanup and plain-string matching described below.
+- Color tags are stripped from `player_name` before nameplate matching in case another hook returned formatted text: `ColorSelection.lua:698-699`. This is a 2.14 addition. In the original baseline it did not compensate for the separate name-part cleanup and plain-string matching regressions described below; the preserved patched snapshot now also contains those two fixes.
 - The TrueLevel-related panel flag is actively cleared rather than left commented out: `ColorSelection.lua:1190`.
 - The player grid is no longer rebuilt every update tick. Event-driven calls remain at `color_customizer_view.lua:77`, `:1343`, `:1420`, `:1543`, `:1660`, and `:1716`.
 - Stray `polo`, `marco`, `test`, and per-row debug echoes were removed from the player-list code near `color_customizer_view.lua:1730-1840`.
@@ -144,7 +144,7 @@ The old function treated `shooting_range` and `training_grounds` as non-mission 
 
 **Inferred intent:** Slot/class coloring is now intended to be testable or visible in the shooting range.
 
-## Verified TheFuckening-only work absent from 2.14
+## Verified TheFuckening-only work absent from the original 2.14 baseline
 
 Paths in this section are relative to `OLD_CUSTOM` unless labeled otherwise.
 
@@ -194,9 +194,9 @@ The old `apply_slot_colors_internal` exits immediately in the hub at `ColorSelec
 
 ### 4. Nameplate formatting and literal-name matching fixes
 
-TheFuckening contains two targeted nameplate behaviors that are absent from 2.14:
+TheFuckening contains two targeted nameplate behaviors that were absent from the original 2.14 code reviewed for this comparison. Austin's preserved `newer-2.14-with-nameplate-fixes` snapshot now contains both corrections, so the paths below describe the historical contrast rather than the current contents of that patched snapshot:
 
-- It removes a `{#color(...)}` tag from `name_part` only when that tag is at the start of the string, using `^` in the pattern at `ColorSelection.lua:870`. The corresponding original 2.14 expression at `NEWER_PATCHED/ColorSelection/scripts/mods/ColorSelection/ColorSelection.lua:712` was unanchored and therefore removed every matching color tag in the first line. Both versions separately split and reattach `title_part`; the customized copy's recombination is at `:883-887`, so title formatting after the newline remains intact while the anchored cleanup protects later inline tags in the name/level line.
+- It removes a `{#color(...)}` tag from `name_part` only when that tag is at the start of the string, using `^` in the pattern at `ColorSelection.lua:870`. The original 2.14 baseline used an unanchored expression and therefore removed every matching color tag in the first line; the preserved patched snapshot now uses the anchored form at `NEWER_PATCHED/ColorSelection/scripts/mods/ColorSelection/ColorSelection.lua:710`. Both preserved versions separately split and reattach `title_part`, so title formatting after the newline remains intact while the anchored cleanup protects later inline tags in the name/level line.
 - It locates the player with `clean_name_part:find(player_name, 1, true)` at `ColorSelection.lua:875`. Because `plain = true` disables Lua-pattern interpretation, the raw `player_name` is the correct literal search text. TheFuckening still computes `escaped_name` at `:860`, with a character class that no longer contains `-`, but that variable is unused by this nameplate path.
 
 **Assumed historical intent, supported by [`docs/history/nameplate-fix-message.txt`](../history/nameplate-fix-message.txt):** The leading tag belongs to the color that this mod may replace for the class icon/name. Anchoring its removal preserves later inline formatting, including the colored level text supplied by True Level, rather than flattening every color tag on the nameplate's first line. The message also identifies the mismatch created by escaping pattern characters and then asking `find` to perform a plain-string search: for example, 2.14 transforms `Haken-Veil` into `Haken%-Veil`, then searches literally for the inserted `%`, so `name_start` is nil and the recoloring block is skipped. Searching for raw `player_name` in plain mode resolves the whole class of names containing Lua pattern characters; merely removing `-` from the escape class would address the hyphen example but leave the same defect for `.`, `(`, `)`, `%`, and the other escaped characters.
@@ -215,7 +215,7 @@ TheFuckening contains two targeted nameplate behaviors that are absent from 2.14
 | Shared UI color table | Replaced with a new allocator-backed table | Existing table is cleared/reused | Preserve 2.14's table identity unless testing proves it unnecessary. |
 | Presets | Customizer grid plus DMF dropdowns | Customizer grid only | Port only the dropdown UI/handler if still desired. |
 | Outlines | Not present | Optional outline recoloring | Ensure the selected color comes from the final merged precedence function. |
-| Nameplate formatting | Removes only a leading name-part color tag and uses raw `player_name` for a plain search | Removes all name-part color tags and searches for a pattern-escaped name as literal text | Preserve TheFuckening's anchored cleanup and raw-name/plain-search pairing; retain 2.14's separate cleanup of color tags returned inside `player_name`. |
+| Nameplate formatting | Removes only a leading name-part color tag and uses raw `player_name` for a plain search | Original 2.14 removed all name-part color tags and searched for a pattern-escaped name as literal text; the preserved patched snapshot now uses the corrected forms | Preserve the anchored cleanup and raw-name/plain-search pairing; retain 2.14's separate cleanup of color tags returned inside `player_name`. |
 
 ## Likely merge-conflict hotspots
 
@@ -250,8 +250,8 @@ These are verified overlapping code regions where a direct copy is unsafe:
 
 7. **Nameplate text processing**
    - Old formatting-preserving cleanup and literal search: `OLD_CUSTOM/.../ColorSelection.lua:860-875`.
-   - New colored-`player_name` cleanup plus the originally regressed name-part/search expressions: `NEWER_PATCHED/.../ColorSelection.lua:698-717`.
-   - Keep 2.14's cleanup of formatting embedded in `player_name`, then use TheFuckening's anchored leading-tag removal and raw-name plain search.
+   - New colored-`player_name` cleanup plus the corrected name-part/search expressions: `NEWER_PATCHED/.../ColorSelection.lua:698-717`.
+   - The preserved patched snapshot keeps 2.14's cleanup of formatting embedded in `player_name` and now uses the anchored leading-tag removal and raw-name plain search.
 
 ## Potential regressions and bugs requiring runtime validation
 
@@ -266,14 +266,14 @@ When an account ID is missing and `color_bots` is false, `get_color_for_account_
 
 This appears inconsistent with `color_bots_tooltip`, which promises the default game color. Test with `color_bots = false` in missions, hub, and shooting range.
 
-### 2. 2.14 regresses TheFuckening's nameplate fixes
+### 2. Original 2.14 regressed TheFuckening's nameplate fixes; the preserved patched snapshot corrects them
 
-Two verified expression changes can break formatting or recoloring:
+Two verified expression changes in the original 2.14 source could break formatting or recoloring. The preserved `newer-2.14-with-nameplate-fixes` snapshot has already replaced both expressions with the corrected anchored and raw-literal forms:
 
-- At `ColorSelection.lua:712`, 2.14 uses an unanchored color-tag pattern on `name_part`. It can remove later inline color tags on the first line, including True Level's level color, instead of removing only the leading tag that Color Selection is replacing. TheFuckening uses the anchored form at `OLD_CUSTOM/ColorSelection/scripts/mods/ColorSelection/ColorSelection.lua:870`.
-- At `ColorSelection.lua:702`, 2.14 inserts `%` escapes into Lua pattern characters in `player_name`, then passes that transformed text to `find(..., true)` at `:717`. Plain mode makes those inserted percent signs literal. A name such as `Haken-Veil` becomes `Haken%-Veil`, fails to match the visible `Haken-Veil`, leaves `name_start` nil, and skips the recoloring block. The same logic affects any name containing another escaped character. TheFuckening searches with raw `player_name` in plain mode at `OLD_CUSTOM/.../ColorSelection.lua:875`, which is the internally consistent pairing.
+- The original 2.14 baseline used an unanchored color-tag pattern on `name_part`, which could remove later inline color tags on the first line, including True Level's level color. The preserved patched snapshot now uses the anchored expression at `ColorSelection.lua:710`, matching the behavior at `OLD_CUSTOM/ColorSelection/scripts/mods/ColorSelection/ColorSelection.lua:870`.
+- The original 2.14 baseline inserted `%` escapes into Lua pattern characters in `player_name`, then passed that transformed text to `find(..., true)`. Plain mode made those inserted percent signs literal. The preserved patched snapshot now searches raw `player_name` at `ColorSelection.lua:715`, matching the internally consistent pairing at `OLD_CUSTOM/.../ColorSelection.lua:875`.
 
-These are code-review findings supported by the user's contemporaneous reasoning, but their visible in-game effects still warrant testing with the current True Level/nameplate implementations. Preserve 2.14's separate stripping of tags embedded in `player_name` at `:698-699`; replace only the unanchored name-part cleanup and escaped literal search. TheFuckening's `escaped_name` declaration at old line 860 is dead code in this path and can be removed if no other use is introduced.
+These historical code-review findings are supported by the user's contemporaneous reasoning. Austin has already tested the two fixes in the preserved patched snapshot, but the new independent compatibility seam still requires its own validation with current True Level and game nameplates. Keep 2.14's separate stripping of tags embedded in `player_name` at `:698-699` together with the corrected anchored cleanup and raw literal search. TheFuckening's `escaped_name` declaration at old line 860 is dead code in this path.
 
 ### 3. SlotFix is runtime-required but undeclared
 
